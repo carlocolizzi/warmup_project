@@ -22,7 +22,8 @@ setup(
         'console_scripts': [
             'publisher = warmup_project.publisher:main',
             'subscriber = warmup_project.subscriber:main',
-            'teleop = warmup_project.teleop:main'
+            'teleop = warmup_project.teleop:main',
+            'wall_follower = warmup_project.wall_follower:main'
         ],
     },
 )
