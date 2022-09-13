@@ -4,7 +4,6 @@ import sys
 import termios
 import rclpy
 from rclpy.node import Node
-from neato2_interfaces.msg import Bump
 from geometry_msgs.msg import Twist
 
 class teleop(Node):
