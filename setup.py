@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'publisher = warmup_project.publisher:main',
-            'subscriber = warmup_project.subscriber:main'
+            'subscriber = warmup_project.subscriber:main',
+            'teleop = warmup_project.teleop:main'
         ],
     },
 )
