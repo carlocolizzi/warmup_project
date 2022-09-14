@@ -24,7 +24,10 @@ setup(
             'subscriber = warmup_project.subscriber:main',
             'teleop = warmup_project.teleop:main',
             'wall_follower = warmup_project.wall_follower:main',
-            'drive_square = warmup_project.drive_square:main'
+            'drive_square = warmup_project.drive_square:main',
+            'person_follower = warmup_project.drive_square:main',
+            'obstacle_avoider = warmup_project.obstacle_avoider:main',
+            'finite_state_controller = warmup_project.finite_state_controller:main'
         ],
     },
 )

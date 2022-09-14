@@ -11,19 +11,32 @@ class driveSquare(Node):
         self.run_loop()        
     
     def run_loop(self):
-        msg = Twist()
+        while True:
+            msg = Twist()
 
-        msg.linear.x = 1.0
-        msg.angular.z = 0.0
+            msg.linear.x = 1.0
+            msg.angular.z = 0.0
 
-        self.vel_pub.publish(msg)
-        time.sleep(3)
+            self.vel_pub.publish(msg)
+            time.sleep(3)
 
-        msg.angular.z = 1.0
-        msg.linear.x = 0.0
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
 
-        self.vel_pub.publish(msg)
-        time.sleep(2)
+            self.vel_pub.publish(msg)
+            time.sleep(0.5)
+
+            msg.angular.z = 1.0
+            msg.linear.x = 0.0
+
+            self.vel_pub.publish(msg)
+            time.sleep(2.06)
+
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
+
+            self.vel_pub.publish(msg)
+            time.sleep(0.5)
 
 def main(args=None):
     rclpy.init(args=args)
