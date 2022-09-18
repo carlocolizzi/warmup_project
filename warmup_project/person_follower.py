@@ -17,7 +17,9 @@ class PersonFollower(Node):
         
     def process_scan(self, msg):
             # update state members from lidar subscription data
-            msg.ranges[math.isinf(msg.ranges)] = 0
+            for index in msg.ranges:
+                if math.isinf(msg.ranges[index]):
+                    msg.ranges[index] = 0
             dist_front = msg.ranges
 
             nonzero_indices = np.nonzero(dist_front)
