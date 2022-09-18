@@ -1,3 +1,4 @@
+from cmath import isinf, isnan
 from turtle import distance
 import rclpy
 from rclpy.node import Node
@@ -19,31 +20,37 @@ class Subscriber(Node):
         self.create_subscription(LaserScan, 'scan', self.process_scan,\
                                  qos_profile=qos_profile_sensor_data)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
-        # self.create_timer(0.1, self.run_loop)                           # loop timer
         
-        # state variable members
-        self.target_distance = 1.0
-        self.previous_distance = 1
-        self.dist_right = 1.0
-        self.dist_front = 1.0
-        self.error = 0
+        # line follower params
+        self.target_distance = 1.0 # (m)   dist to follow wall at
+        # self.look_ahead_deg  = 30  # (deg) angle of look-ahead vector
 
-        # PID
-        self.pid = PID(0.2, 0.1, 0.5, setpoint=1.0)
+        # state members
+        self.dist_front = None     # (m) current distance dead ahead
+        # self.look_right = None     # (m) current look-right dist
+        # self.look_ahead = None     # (m) current look-ahead dist
+        self.dist_to_wall = None   # (m) current calculated dist to wall
 
+        # PID controller
+        self.pid = PID(3, 0.5, 5, setpoint=self.target_distance)
     
     def process_scan(self, msg):
         # update state members from lidar subscription data
         self.dist_front = msg.ranges[0]
-        self.previous_distance = self.dist_front
-        self.dist_right = mean(msg.ranges[260:280])
-        if(not math.isinf(self.dist_right)):
-            self.error = self.target_distance - self.dist_right
+        # self.look_right = msg.ranges[270]
+        # self.look_ahead = msg.ranges[290]
+
+        # TODO: handle inf edge cases
+
+        # calculate and update distance to wall
+        # self.update_dist_to_wall()
+        self.dist_to_wall = min(msg.ranges[180:])
         
         self.run_loop()
 
         # debug
-        print(f"d right {round(self.dist_right, 3)}, d front {round(self.dist_front, 3)}", end="")
+        print(f"front {round(self.dist_front, 2)}, "\
+             +f"wall { round(self.dist_to_wall, 2)}", end="")
 
     def run_loop(self):
         msg = Twist()
@@ -60,43 +67,16 @@ class Subscriber(Node):
         msg.linear.x = 0.2
 
         # angular velocity proportional to wall distance error
-        # msg.angular.z = 0.4 * self.error
-        msg.angular.z = self.pid(self.dist_right if not math.isinf(self.dist_right) else 2)
+        msg.angular.z = self.pid(self.dist_to_wall)
+        
+        # keep neato from spinning out of control if the PID screws up!
+        if  isnan(msg.angular.z) or isinf(msg.angular.z):
+            msg.angular.z = 0.0
+
         print(f", zt {round(msg.angular.z, 3)}")
         
         # publish velocity command message
         self.vel_pub.publish(msg)
-
-    # def run_loop(self):
-    #     msg = Twist()
-
-    #     # stop if robot has crashed
-    #     if self.distance_to_obstacle <= 0.35:
-    #         msg.linear.x = 0.0
-    #         print(" stopped")
-    #         return
-        
-    #     # go straight by default
-    #     msg.linear.x = 0.2
-    #     msg.angular.z = 0.0
-        
-    #     # if (self.dist_right < self.target_distance)\
-    #     #         and (self.dist_right >= self.previous_distance):
-    #     if (self.dist_right < self.target_distance):
-    #         # too close and getting closer
-    #         # turn right (towards wall)
-    #         print(" turning right")
-    #         msg.angular.z = -1.0
-    #     # elif (self.dist_right > self.target_distance)\
-    #     #         and (self.dist_right <= self.previous_distance):
-    #     if (self.dist_right > self.target_distance):
-    #         # too far and getting farther
-    #         # turn left  (away from wall)
-    #         print(" turning left")
-    #         msg.angular.z = 1.0
-        
-    #     # publish velocity command message
-    #     self.vel_pub.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
