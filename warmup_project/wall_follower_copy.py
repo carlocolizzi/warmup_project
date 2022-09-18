@@ -1,3 +1,4 @@
+from cmath import isinf, isnan
 from turtle import distance
 import rclpy
 from rclpy.node import Node
@@ -22,34 +23,33 @@ class Subscriber(Node):
         
         # line follower params
         self.target_distance = 1.0 # (m)   dist to follow wall at
-        self.look_ahead_deg  = 30  # (deg) angle of look-ahead vector
+        # self.look_ahead_deg  = 30  # (deg) angle of look-ahead vector
 
         # state members
         self.dist_front = None     # (m) current distance dead ahead
-        self.look_right = None     # (m) current look-right dist
-        self.look_ahead = None     # (m) current look-ahead dist
+        # self.look_right = None     # (m) current look-right dist
+        # self.look_ahead = None     # (m) current look-ahead dist
         self.dist_to_wall = None   # (m) current calculated dist to wall
 
         # PID controller
-        self.pid = PID(2.0, 0.5, 3, setpoint=1.0)
+        self.pid = PID(3, 0.5, 5, setpoint=self.target_distance)
     
     def process_scan(self, msg):
         # update state members from lidar subscription data
         self.dist_front = msg.ranges[0]
-        self.look_right = msg.ranges[270]
-        self.look_ahead = msg.ranges[290]
+        # self.look_right = msg.ranges[270]
+        # self.look_ahead = msg.ranges[290]
 
         # TODO: handle inf edge cases
 
         # calculate and update distance to wall
-        self.update_dist_to_wall()
+        # self.update_dist_to_wall()
+        self.dist_to_wall = min(msg.ranges[180:])
         
         self.run_loop()
 
         # debug
-        print(f"right {round(self.look_right, 2)}, "\
-             +f"front {round(self.dist_front, 2)}, "\
-             +f"ahead {round(self.look_ahead, 2)}, "\
+        print(f"front {round(self.dist_front, 2)}, "\
              +f"wall { round(self.dist_to_wall, 2)}", end="")
 
     def run_loop(self):
@@ -64,12 +64,15 @@ class Subscriber(Node):
             return
         
         # forward velocity
-        msg.linear.x = 0.3
+        msg.linear.x = 0.2
 
         # angular velocity proportional to wall distance error
-        # msg.angular.z = 0.4 * self.error
         msg.angular.z = self.pid(self.dist_to_wall)
-        msg.angular.z = max(msg.angular.z, -2)
+        
+        # keep neato from spinning out of control if the PID screws up!
+        if  isnan(msg.angular.z) or isinf(msg.angular.z):
+            msg.angular.z = 0.0
+
         print(f", zt {round(msg.angular.z, 3)}")
         
         # publish velocity command message
