@@ -24,6 +24,7 @@ setup(
             'subscriber = warmup_project.subscriber:main',
             'teleop = warmup_project.teleop:main',
             'wall_follower = warmup_project.wall_follower:main',
+            'wall_follower_2 = warmup_project.wall_follower_copy:main',
             'drive_square = warmup_project.drive_square:main',
             'person_follower = warmup_project.drive_square:main',
             'obstacle_avoider = warmup_project.obstacle_avoider:main',

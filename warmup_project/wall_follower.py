@@ -1,12 +1,14 @@
-
+from turtle import distance
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist # Neato control messages
+from geometry_msgs.msg import Twist, Vector3 # Neato control messages
 from rclpy.qos import qos_profile_sensor_data
 
 import numpy as np
 import math
+from simple_pid import PID
+from statistics import mean
 
 class Subscriber(Node):
 
@@ -14,44 +16,34 @@ class Subscriber(Node):
         # run superclass constructor
         super().__init__("laser_scan")
 
-        self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
+        self.create_subscription(LaserScan, 'scan', self.process_scan,\
+                                 qos_profile=qos_profile_sensor_data)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
         # self.create_timer(0.1, self.run_loop)                           # loop timer
         
         # state variable members
         self.target_distance = 1.0
-        self.previous_distance = None
+        self.previous_distance = 1
         self.dist_right = 1.0
         self.dist_front = 1.0
         self.error = 0
+
+        # PID
+        self.pid = PID(0.2, 0.1, 0.5, setpoint=1.0)
+
     
     def process_scan(self, msg):
         # update state members from lidar subscription data
         self.dist_front = msg.ranges[0]
-
         self.previous_distance = self.dist_front
-
-        self.dist_300 = msg.ranges[300]
-        self.dist_270 = msg.ranges[270]
+        self.dist_right = mean(msg.ranges[260:280])
+        if(not math.isinf(self.dist_right)):
+            self.error = self.target_distance - self.dist_right
         
-        self.calculate_angle()
-
         self.run_loop()
 
         # debug
         print(f"d right {round(self.dist_right, 3)}, d front {round(self.dist_front, 3)}", end="")
-
-    def calculate_angle(self):
-        b = self.dist_270
-        c = self.dist_300
-        a = math.sqrt(b**2 +c**2 - (2*b*c*math.cos(30)))    #cosine rule 
-
-        C = math.asin((math.sin(30)/ a) * c)        #sine rule to find angles
-        self.angle_to_wall = C
-
-
-
-
 
     def run_loop(self):
         msg = Twist()
@@ -66,17 +58,6 @@ class Subscriber(Node):
         
         # forward velocity
         msg.linear.x = 0.2
-
-        if (self.angle_to_wall < 90) and (self.dist_270 > self.target_distance):
-            msg.angular.z = 0.0
-        elif (self.angle_to_wall > 90) and (self.dist_270 < self.target_distance):
-            msg.angular.z = 0.0
-        elif (self.angle_to_wall > 90) and (self.dist_270 < self.target_distance):
-            msg.angular.z = 1.0 #turn 
-        elif (self.angle_to_wall > 90) and (self.dist_270 < self.target_distance):
-            msg.angular.z = -1.0
-
-
 
         # angular velocity proportional to wall distance error
         # msg.angular.z = 0.4 * self.error
