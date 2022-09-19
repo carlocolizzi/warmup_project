@@ -5,6 +5,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose # Neato control messages
 from rclpy.qos import qos_profile_sensor_data
 
+import time
 import math
 import numpy as np
 
@@ -15,7 +16,7 @@ class ObstacleAvoider(Node):
         super().__init__("laser_scan")
 
         self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
-        self.create_subscription(Odometry, 'odom', self.process_odom, 10)   # lidar sub
+        self.create_subscription(Odometry, 'base_footprint', self.process_odom, 10)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
 
         self.target = [0.0, 10.0]
@@ -23,20 +24,23 @@ class ObstacleAvoider(Node):
         self.run_loop()
 
     def process_odom(self, msg):
+        print("check")
         position = msg.pose.pose.position
         self.position_x = position.x
         self.position_y = position.y
 
     def process_scan(self, msg):
             # update state members from lidar subscription data
-            for index in msg.ranges:
+            for index in range(0,len(msg.ranges)):
                 if math.isinf(msg.ranges[index]):
                     msg.ranges[index] = 0
-            self.distances = msg.ranges
 
-            nonzero_indices = np.nonzero(dist_front)
-            self.heading = remap(self.heading)
-            self.heading = math.mean(nonzero_indices)
+            nonzero_indices = np.flatnonzero(msg.ranges)
+
+            for index in range(0,len(nonzero_indices)):
+                remapped_indices = remap(nonzero_indices[index])
+
+            self.heading = np.mean(remapped_indices)
 
     def run_loop(self):
         position = [self.position_x, self.position_y]
@@ -58,6 +62,8 @@ class ObstacleAvoider(Node):
             msg.angular.z = 1.0
         else:
             msg.angular.z = 0.0
+            self.vel_pub.publish(msg)
+            #time.sleep(0.1)
             msg.linear.x = 1.0
 
         self.vel_pub.publish(msg)
