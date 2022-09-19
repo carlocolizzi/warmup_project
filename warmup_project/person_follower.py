@@ -4,6 +4,7 @@ from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist # Neato control messages
 from rclpy.qos import qos_profile_sensor_data
 
+import time
 import math
 import numpy as np
 
@@ -18,14 +19,17 @@ class PersonFollower(Node):
         
     def process_scan(self, msg):
             # update state members from lidar subscription data
-            for index in msg.ranges:
+            for index in range(0,len(msg.ranges)):
                 if math.isinf(msg.ranges[index]):
                     msg.ranges[index] = 0
             dist_front = msg.ranges
 
-            nonzero_indices = np.nonzero(dist_front)
-            self.heading = remap(self.heading)
-            self.heading = math.mean(nonzero_indices)
+            nonzero_indices = np.flatnonzero(dist_front)
+            for index in range(0,len(nonzero_indices)):
+
+                remapped_indices = remap(nonzero_indices[index])
+            self.heading = np.mean(remapped_indices)
+            #self.heading = remap(self.heading)
 
             self.act()
 
@@ -38,12 +42,14 @@ class PersonFollower(Node):
             msg.angular.z = 1.0
         else:
             msg.angular.z = 0.0
+            self.vel_pub.publish(msg)
+            time.sleep(0.1)
             msg.linear.x = 1.0
 
         self.vel_pub.publish(msg)
 
 def remap(number):
-        if number <= 180:
+        if number < 180:
             result = number
         else:
             result = number -360
