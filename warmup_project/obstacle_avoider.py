@@ -15,32 +15,49 @@ class ObstacleAvoider(Node):
         # run superclass constructor
         super().__init__("laser_scan")
 
-        self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
-        self.create_subscription(Odometry, 'base_footprint', self.process_odom, 10)   # lidar sub
-        self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
+        # create subscribers and publishers
+        # self.create_subscription(LaserScan, 'scan', self.process_scan,\
+        #                          qos_profile=qos_profile_sensor_data)       # lidar sub
+        self.create_subscription(Odometry, 'odom', self.process_odom, 10)  # odometry sub
+        self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)         # velocity pub
 
+        # define state members
         self.target = [0.0, 10.0]
         
-        self.run_loop()
+        # self.run_loop()
 
     def process_odom(self, msg):
-        print("check")
         position = msg.pose.pose.position
         self.position_x = position.x
         self.position_y = position.y
 
+        # debug
+        print("pos | "\
+             +f"x: {round(self.position_y, 2)}, "\
+             +f"y: {round(self.position_y, 2)}")
+
     def process_scan(self, msg):
-            # update state members from lidar subscription data
-            for index in range(0,len(msg.ranges)):
-                if math.isinf(msg.ranges[index]):
-                    msg.ranges[index] = 0
+        """
+        Detect objects via LIDAR and write their positions in global
+        coordinates to a state member list
 
-            nonzero_indices = np.flatnonzero(msg.ranges)
+        Args:
+            msg (LaserScan): Neato laser scan message
+        """
+        # use laserscan to find objects in local polar coords
+        
 
-            for index in range(0,len(nonzero_indices)):
-                remapped_indices = remap(nonzero_indices[index])
+        # update state members from lidar subscription data
+        for index in range(0,len(msg.ranges)):
+            if math.isinf(msg.ranges[index]):
+                msg.ranges[index] = 0
 
-            self.heading = np.mean(remapped_indices)
+        nonzero_indices = np.flatnonzero(msg.ranges)
+
+        for index in range(0,len(nonzero_indices)):
+            remapped_indices = remap(nonzero_indices[index])
+
+        self.heading = np.mean(remapped_indices)
 
     def run_loop(self):
         position = [self.position_x, self.position_y]
