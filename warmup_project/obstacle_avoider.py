@@ -37,9 +37,9 @@ class ObstacleAvoider(Node):
         self.position_y = position.y
 
         # debug
-        print("pos | "\
-             +f"x: {round(self.position_x, 2)}, "\
-             +f"y: {round(self.position_y, 2)}")
+        print_same_line("pos | "\
+             +f"x: {round(self.position_x, 2)} | "\
+             +f"y: {round(self.position_y, 2)} | ")
 
     def process_scan(self, msg):
         """
@@ -68,14 +68,14 @@ class ObstacleAvoider(Node):
     def run_loop(self):
         position = [self.position_x, self.position_y]
 
-        print(int(remap2(self.heading)))
-
         obstacles = [self.heading, self.distances[int(remap2(self.heading))]]
         obstacles_cart = pol2cart(obstacles[0], obstacles[1])
+        print_same_line(f"obstacle {round(obstacles_cart[0], 2)}, {round(obstacles_cart[1], 2)} | ")
+
         vector = np.add(np.subtract(self.target, position), obstacles_cart)
 
         angle = math.atan2(vector[0], vector[1])
-        print(angle)
+        print(f"angle {round(np.degrees(angle), 2)}")
         self.drive_to_vector(angle)
 
 
@@ -120,6 +120,9 @@ def remap2(number):
         else:
             result = number + 360
         return result
+
+def print_same_line(line):
+    print(line, end = "")
 
 def main(args=None):
     rclpy.init(args=args)
