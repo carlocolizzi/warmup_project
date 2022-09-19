@@ -23,9 +23,9 @@ class PersonFollower(Node):
             dist_front = msg.ranges
 
             nonzero_indices = np.nonzero(dist_front)
-            self.heading = math.mean(nonzero_indices)
             self.heading = remap(self.heading)
-
+            self.heading = math.mean(nonzero_indices)
+            
             self.act()
 
     def act(self):
