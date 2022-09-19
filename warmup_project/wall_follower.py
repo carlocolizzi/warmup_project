@@ -21,24 +21,18 @@ class Subscriber(Node):
                                  qos_profile=qos_profile_sensor_data)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
         
-        # line follower params
+        # algorithm params
         self.target_distance = 1.0 # (m)   dist to follow wall at
-        # self.look_ahead_deg  = 30  # (deg) angle of look-ahead vector
+        self.pid = PID(3, 0.5, 5, setpoint=self.target_distance)
 
         # state members
         self.dist_front = None     # (m) current distance dead ahead
-        # self.look_right = None     # (m) current look-right dist
-        # self.look_ahead = None     # (m) current look-ahead dist
         self.dist_to_wall = None   # (m) current calculated dist to wall
-
-        # PID controller
-        self.pid = PID(3, 0.5, 5, setpoint=self.target_distance)
+        
     
     def process_scan(self, msg):
         # update state members from lidar subscription data
         self.dist_front = msg.ranges[0]
-        # self.look_right = msg.ranges[270]
-        # self.look_ahead = msg.ranges[290]
 
         # TODO: handle inf edge cases
 

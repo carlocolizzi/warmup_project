@@ -7,19 +7,23 @@ import math
 import numpy as np
 
 class PersonFollower(Node):
-
     def __init__(self):
         # run superclass constructor
         super().__init__("laser_scan")
 
-        self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
+        self.create_subscription(LaserScan, 'scan', self.process_scan,\
+                                 qos_profile=qos_profile_sensor_data)   # lidar sub
+        # self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
         
     def process_scan(self, msg):
             # update state members from lidar subscription data
-            for index in msg.ranges:
-                if math.isinf(msg.ranges[index]):
-                    msg.ranges[index] = 0
+            msg.ranges[msg.ranges == np.inf] = 0
+            print(msg.ranges)
+            # for index in len(msg.ranges):
+            #     if math.isinf(msg.ranges[index]):
+            #         msg.ranges[index] = 0
+
             dist_front = msg.ranges
 
             nonzero_indices = np.nonzero(dist_front)
