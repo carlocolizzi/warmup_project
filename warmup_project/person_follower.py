@@ -3,6 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist # Neato control messages
 from rclpy.qos import qos_profile_sensor_data
+
 import math
 import numpy as np
 
@@ -25,7 +26,7 @@ class PersonFollower(Node):
             nonzero_indices = np.nonzero(dist_front)
             self.heading = remap(self.heading)
             self.heading = math.mean(nonzero_indices)
-            
+
             self.act()
 
     def act(self):
