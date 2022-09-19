@@ -16,15 +16,20 @@ class ObstacleAvoider(Node):
         super().__init__("laser_scan")
 
         # create subscribers and publishers
-        # self.create_subscription(LaserScan, 'scan', self.process_scan,\
-        #                          qos_profile=qos_profile_sensor_data)       # lidar sub
+        self.create_subscription(LaserScan, 'scan', self.process_scan,\
+                                 qos_profile=qos_profile_sensor_data)      # lidar sub
         self.create_subscription(Odometry, 'odom', self.process_odom, 10)  # odometry sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)         # velocity pub
 
         # define state members
         self.target = [0.0, 10.0]
+        self.position_x = 0.0
+        self.position_y = 0.0
+        self.heading = 0.0
+        self.distances = np.zeros(360)
+
         
-        # self.run_loop()
+        self.run_loop()
 
     def process_odom(self, msg):
         position = msg.pose.pose.position
@@ -33,7 +38,7 @@ class ObstacleAvoider(Node):
 
         # debug
         print("pos | "\
-             +f"x: {round(self.position_y, 2)}, "\
+             +f"x: {round(self.position_x, 2)}, "\
              +f"y: {round(self.position_y, 2)}")
 
     def process_scan(self, msg):
@@ -46,7 +51,6 @@ class ObstacleAvoider(Node):
         """
         # use laserscan to find objects in local polar coords
         
-
         # update state members from lidar subscription data
         for index in range(0,len(msg.ranges)):
             if math.isinf(msg.ranges[index]):
@@ -58,17 +62,22 @@ class ObstacleAvoider(Node):
             remapped_indices = remap(nonzero_indices[index])
 
         self.heading = np.mean(remapped_indices)
-
+        self.distances = msg.ranges
+        self.run_loop()
+        
     def run_loop(self):
         position = [self.position_x, self.position_y]
 
-        obstacles = [self.heading, self.distances[remap2(self.heading)]]
+        print(int(remap2(self.heading)))
+
+        obstacles = [self.heading, self.distances[int(remap2(self.heading))]]
         obstacles_cart = pol2cart(obstacles[0], obstacles[1])
-        vector = self.target - position + obstacles_cart
+        vector = np.add(np.subtract(self.target, position), obstacles_cart)
 
-        angle = math.atan2(vector[1]/vector[0])
-
+        angle = math.atan2(vector[0], vector[1])
+        print(angle)
         self.drive_to_vector(angle)
+
 
     def drive_to_vector(self, angle):
         msg = Twist()
@@ -106,7 +115,7 @@ def remap(number):
         return result
 
 def remap2(number):
-        if number <= 180:
+        if number >= 0:
             result = number
         else:
             result = number + 360
