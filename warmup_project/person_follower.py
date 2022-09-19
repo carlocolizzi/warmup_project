@@ -15,37 +15,28 @@ class PersonFollower(Node):
 
         self.create_subscription(LaserScan, 'scan', self.process_scan,\
                                  qos_profile=qos_profile_sensor_data)   # lidar sub
-        # self.create_subscription(LaserScan, 'scan', self.process_scan, qos_profile=qos_profile_sensor_data)   # lidar sub
         self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)      # velocity pub
         
     def process_scan(self, msg):
-            # update state members from lidar subscription data
-<<<<<<< HEAD
-            msg.ranges[msg.ranges == np.inf] = 0
-            print(msg.ranges)
-            # for index in len(msg.ranges):
-            #     if math.isinf(msg.ranges[index]):
-            #         msg.ranges[index] = 0
-
-=======
+            # collect and clean lidar subscription data
             for index in range(0,len(msg.ranges)):
                 if math.isinf(msg.ranges[index]):
                     msg.ranges[index] = 0
->>>>>>> b0206f2cb13f129feaf9d333061de23053646927
             dist_front = msg.ranges
-
             nonzero_indices = np.flatnonzero(dist_front)
             for index in range(0,len(nonzero_indices)):
-
                 remapped_indices = remap(nonzero_indices[index])
+            
+            # calculate degree heading of object in front of Neato
             self.heading = np.mean(remapped_indices)
-            #self.heading = remap(self.heading)
 
+            # drive towards object heading
             self.act()
 
     def act(self):
         msg = Twist()
 
+        # drive towards object heading
         if self.heading < 0:
             msg.angular.z = -1.0
         elif self.heading > 0:
@@ -56,14 +47,24 @@ class PersonFollower(Node):
             time.sleep(0.1)
             msg.linear.x = 1.0
 
+        # send velocity command to Neato
         self.vel_pub.publish(msg)
 
 def remap(number):
-        if number < 180:
-            result = number
-        else:
-            result = number -360
-        return result
+    """
+    Remap 0-to-360 heading values to -180-to-180
+
+    Args:
+        number (int): heading value
+
+    Returns:
+        int: remapped heading value
+    """
+    if number < 180:
+        result = number
+    else:
+        result = number -360
+    return result
 
 def main(args=None):
     rclpy.init(args=args)
