@@ -3,7 +3,7 @@
 
 # import ROS2 libraries
 from turtle import heading
-import rclpy
+import 
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
