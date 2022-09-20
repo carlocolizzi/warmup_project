@@ -71,7 +71,6 @@ class ObstacleAvoider(Node):
         position = [self.position_x, self.position_y]
         # position of obstacle in local polar coords
         if self.heading > 0:
-            print("obstacle found")
             obstacles = [self.heading, self.distances[int(remap2(self.heading))]]
             # pos of obstacle in local cart coords
             obstacles_cart = pol2cart(obstacles[1], math.radians(obstacles[0]))
