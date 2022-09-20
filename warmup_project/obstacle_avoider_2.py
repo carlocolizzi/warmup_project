@@ -63,30 +63,56 @@ class ObstacleAvoider(Node):
         Args:
             msg (ROS LaserScan): Neato laser scan msg
         """
-        def convert_to_heading_deg(heading_idx):
-            # convert index from laser scan array to (float) degree heading
-            return heading_idx if heading_idx <= 180 else heading_idx - 360
+        def remap_scan(ranges):
+            """
+            Reorders a laser scan list to a form where element 0 is
+            directly behind the neato with positive elements up to
+            359 going around clockwise. Element 90 is left,
+            element 180 is in front, and element 270 is right
 
+            Args:
+                ranges (list of floats): laser scan list
+
+            Returns:
+                list of floats: remapped scan list
+            """
+            # split list into halfs
+            left_half  = ranges[0:179]
+            right_half = ranges[180:]
+
+            # reverse halfs and concatenate
+            return left_half[::-1] + right_half[::-1]
+        
+        def convert_to_heading_deg(index):
+            return index - 180
 
         # clean msg.ranges (make inf = 0)
-        for degree, range in enumerate(msg.ranges):
-            if math.isinf(range):
+        for degree, _range in enumerate(msg.ranges):
+            if math.isinf(_range):
                 msg.ranges[degree] = 0
-    
-        # nonzero scan elements will belong to the detected object
-        for index in range(0,len(nonzero_indices)):
-            remapped_indices = remap(nonzero_indices[index])
-        obj_indices = np.flatnonzero(msg.ranges)
+        
+        # remap msg.ranges
+        msg.ranges = remap_scan(msg.ranges)
+
+        # nonzero scan elements will belong to the detected obstacle
+        obstacle_indicies = np.flatnonzero(msg.ranges)
+
+        # remap the ranges list such that the list wrapping occurs
+        # directly behind the neato instead of directly in front
+        remapped_indices = []
+        for index in range(0,len(obstacle_indicies)):
+            remapped_indices.append(remap(obstacle_indicies[index]))
+        print(remapped_indices)
 
         ## TODO: handle no object detected
 
         # local polar coords of detected object (average of detected points)
-        obj_lp_deg = convert_to_heading_deg(np.mean(obj_indices))
-        obj_lp_range = np.mean(np.array(msg.ranges)[obj_indices])
+        obj_lp_deg =  convert_to_heading_deg(np.mean(obstacle_indicies))
+        obj_lp_range = np.mean(np.array(msg.ranges)[obstacle_indicies])
 
         # convert local polar  coords to global coord and write to obj pose state member
-        self.obstacle_pos.set_comp(0, self.get_position().x + math.cos(math.radians(obj_lp_deg))*obj_lp_range)
-        self.obstacle_pos.set_comp(1, self.get_position().y + math.sin(math.radians(obj_lp_deg))*obj_lp_range)
+        self.obstacle_pos.set_comp(0, -(self.get_position().x - math.cos(math.radians(obj_lp_deg))*obj_lp_range))
+        self.obstacle_pos.set_comp(1, -(self.get_position().y + math.sin(math.radians(obj_lp_deg))*obj_lp_range))
 
         # run control loop
         self.run_loop()
