@@ -210,7 +210,6 @@ class FiniteStateController(Node):
         # desired_theta = math.degrees(signed_angle(neato_heading, neato_to_target)) - 90
         desired_theta = math.degrees(signed_angle(Vector(0.0,1.0), neato_to_target))
         if -270 <= desired_theta < -180:
-            print("HHHHH")
             desired_theta = desired_theta + 360
 
         drive_msg = Twist()
