@@ -39,7 +39,9 @@ class FiniteStateController(Node):
 
         # finite state machine parameters
         self.approach_threshold = 1.1 # (m) dist to switch from approaching to orbiting object
-        self.steer_pid  = PID(Kp=0.05, Ki=0, Kd=500, setpoint=0)    # PID controller for steering
+        # self.steer_pid  = PID(Kp=0.05, Ki=0, Kd=500, setpoint=0)    # PID controller for steering
+        self.steer_pid  = PID(Kp=0.1, Ki=0, Kd=0.01, setpoint=0)    # PID controller for steering
+
         self.linvel_pid = PID(Kp=0.5,  Ki=0, Kd=0,   setpoint=1.0)  # PID controller for linear velocity
 
         # declare state members
@@ -198,20 +200,26 @@ class FiniteStateController(Node):
         """
         Drive Neato to target point until within a target distance
         """
-        # unit vector with neato's heading
-        neato_heading = VectorPolar(1, math.radians(self.pose.theta)).to_cartesian()
+        # # unit vector with neato's heading
+        # neato_heading = VectorPolar(1, math.radians(self.pose.theta)).to_cartesian()
 
         # displacement vector from neato to target
         neato_to_target = -self.get_position() + self.target_pos
 
         # desired heading will be the signed angle between these vectors
-        desired_heading_deg = math.degrees(signed_angle(neato_heading, neato_to_target)) - 90
+        # desired_theta = math.degrees(signed_angle(neato_heading, neato_to_target)) - 90
+        desired_theta = math.degrees(signed_angle(Vector(0.0,1.0), neato_to_target))
+        if -270 <= desired_theta < -180:
+            print("HHHHH")
+            desired_theta = desired_theta + 360
 
         drive_msg = Twist()
 
         # use PID control to steer neato towards desired heading
-        self.steer_pid.setpoint = desired_heading_deg
-        drive_msg.angular.z = self.steer_pid(0)
+        self.steer_pid.setpoint = desired_theta
+        # drive_msg.angular.z = self.steer_pid(0)
+        drive_msg.angular.z = self.steer_pid(self.pose.theta)
+
 
         # use PID control to slow down approach to target
         drive_msg.linear.x =  -self.linvel_pid(self.dist_to_object)
@@ -220,7 +228,7 @@ class FiniteStateController(Node):
         self.vel_pub.publish(drive_msg)
 
         self.print_debug()
-        print(f" | dh {round(desired_heading_deg, 2)}")
+        print(f" | dth {round(self.steer_pid.setpoint, 2)}")
     
     def print_debug(self):
         print("pos | "\
