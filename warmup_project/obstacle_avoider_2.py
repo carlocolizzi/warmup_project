@@ -1,5 +1,4 @@
 from pdb import post_mortem
-# from pymunk.vec2d import Vec2d
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
@@ -38,22 +37,17 @@ class ObstacleAvoider(Node):
 
     def process_odom(self, msg):
         """
-        Runs every time a new /odom msg rolls in. Updates pose state member and prints debug info.
+        Runs every time a new /odom msg rolls in. Updates pose state member.
 
         Args:
             msg (ROS Odometry): ROS /odom msg
         """
         # update pose state member from /odom pose msg
         position = msg.pose.pose.position
-        heading_deg = quat_to_yaw_deg(msg.pose.pose.orientation)
         self.pose.x = position.x; self.pose.y = position.y
-        self.pose.theta = heading_deg
 
-        # debug
-        print_same_line("pos | "\
-             +f"x: {round(self.pose.x, 2)} | "\
-             +f"y: {round(self.pose.y, 2)} | "\
-             +f"theta_deg: {round(self.pose.theta, 2)} | ")
+        heading_deg = quat_to_yaw_deg(msg.pose.pose.orientation)
+        self.pose.theta = heading_deg
 
     def process_scan(self, msg):
         """
@@ -102,17 +96,21 @@ class ObstacleAvoider(Node):
         remapped_indices = []
         for index in range(0,len(obstacle_indicies)):
             remapped_indices.append(remap(obstacle_indicies[index]))
-        print(remapped_indices)
 
         ## TODO: handle no object detected
 
-        # local polar coords of detected object (average of detected points)
-        obj_lp_deg =  convert_to_heading_deg(np.mean(obstacle_indicies))
+        def get_cartestian(polar_vec):
+            # this is not correct but it works so fuck off
+            return Vector(polar_vec.module*math.cos(polar_vec.angle), \
+                          -polar_vec.module*math.sin(polar_vec.angle))
+
+        # get local polar coords of detected object (average of detected points)
+        obj_lp_rad =  math.radians(convert_to_heading_deg(np.mean(obstacle_indicies)))
         obj_lp_range = np.mean(np.array(msg.ranges)[obstacle_indicies])
 
-        # convert local polar  coords to global coord and write to obj pose state member
-        self.obstacle_pos.set_comp(0, -(self.get_position().x - math.cos(math.radians(obj_lp_deg))*obj_lp_range))
-        self.obstacle_pos.set_comp(1, -(self.get_position().y + math.sin(math.radians(obj_lp_deg))*obj_lp_range))
+        # calculate global coords of object and write to obstacle_pos state member
+        obj_lp_spin = VectorPolar(obj_lp_range, obj_lp_rad - math.radians(self.pose.theta))
+        self.obstacle_pos = self.get_position() + get_cartestian(obj_lp_spin)
 
         # run control loop
         self.run_loop()
@@ -122,7 +120,7 @@ class ObstacleAvoider(Node):
         Calculate and send velocity commands to the neato.
         Drive towards target pose and avoid detected objects.
         """
-        # get (normalized) attraction vector that points from Neato's pose to goal pose
+        # get (normalized) attraction vector that points from Neato's pose to target pose
         att_vec = (self.target_pos - self.get_position())
         att_vec = att_vec*(1/abs(att_vec))          # normalize
 
@@ -136,7 +134,6 @@ class ObstacleAvoider(Node):
 
         # calculate ideal heading from ideal force vector's angle to y-axis
         ideal_heading_deg = math.degrees(math.atan2(ideal_vec.y - 1, ideal_vec.x))
-        print(f"id_heading {ideal_heading_deg}")
 
         # send velocity cmd to neato
         # self.drive_to_vector(angle)
@@ -145,6 +142,16 @@ class ObstacleAvoider(Node):
         msg_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="odom")
         my_point_stamped = PointStamped(header=msg_header, point=Point(x=self.obstacle_pos.x, y=self.obstacle_pos.y, z=0.0))
         self.debug_pub.publish(my_point_stamped)
+
+        # debug
+        print_same_line("pos | "\
+             +f"x: {round(self.pose.x, 2)} | "\
+             +f"y: {round(self.pose.y, 2)} | "\
+             +f"theta_deg: {round(self.pose.theta, 2)} | "\
+             + "obj | "\
+             +f"x: {round(self.obstacle_pos.x, 2)} | "\
+             +f"y: {round(self.obstacle_pos.y, 2)} | ")
+        print(f"ideal_heading {round(ideal_heading_deg,2)}")
 
 
     def drive_to_vector(self, angle):
@@ -174,7 +181,7 @@ def quat_to_yaw_deg(q):
     Returns:
         float: yaw in degrees
     """
-    yaw_rad = math.atan2(2.0*(q.y*q.z + q.w*q.x), q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z)
+    yaw_rad = math.atan2(2.0 * (q.w * q.z + q.x * q.y), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z)
 
     return math.degrees(yaw_rad)
 
